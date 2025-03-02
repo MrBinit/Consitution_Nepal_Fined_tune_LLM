@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, TextStre
 import torch
 
 
-base_model = "/home/binit/fine_tune_LLama/Llama-3.2-3B"
+base_model = "/home/binit/fine_tune_LLama/Llama-3.2-3B_fined_tuned/checkpoint-3500"
 
 tokenizer = AutoTokenizer.from_pretrained(base_model)
 
@@ -27,12 +27,12 @@ pipe = pipeline(
     device_map="auto",
 )
 
-messages = [{"role": "user", "content": "Who is Vincent van Gogh?"}]
+messages = [{"role": "user", "content": "नेपाल सरकारले आफ्ना नागरिकलाई दिएको मौलिक हक के हो ?"}]
 
 prompt = tokenizer.apply_chat_template(
     messages, tokenize=False, add_generation_prompt=True
 )
 
-outputs = pipe(prompt, max_new_tokens=120, do_sample=True)
+outputs = pipe(prompt, max_new_tokens=1024, do_sample=True)
 
 print(outputs[0]["generated_text"])

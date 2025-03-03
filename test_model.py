@@ -2,18 +2,23 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, TextStre
 import torch
 
 
-base_model = "/home/binit/fine_tune_LLama/Llama-3.2-3B_fined_tuned/checkpoint-3500"
+base_model = "/home/binit/fine_tune_LLama/Llama-3.2-3B_fined_tuned/checkpoint-7000"
+original_model = "/home/binit/fine_tune_LLama/Llama-3.2-3B"
 
-tokenizer = AutoTokenizer.from_pretrained(base_model)
+
+tokenizer = AutoTokenizer.from_pretrained(original_model)
 
 model = AutoModelForCausalLM.from_pretrained(
-    base_model,
+    original_model,
     return_dict=True,
     low_cpu_mem_usage=True,
     torch_dtype=torch.float16,
     device_map="auto",
     trust_remote_code=True,
 )
+# model.lm_head.out_features = 128258
+model.load_state_dict(torch.load(base_model, weights_only= True ))
+print(model)
 if tokenizer.pad_token_id is None:
     tokenizer.pad_token_id = tokenizer.eos_token_id
 if model.config.pad_token_id is None:

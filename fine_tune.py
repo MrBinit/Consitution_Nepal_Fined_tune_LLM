@@ -13,6 +13,7 @@ import bitsandbytes as bnb
 import torch
 from datasets import load_dataset
 from trl import SFTTrainer, setup_chat_format
+import torch.nn as nn
 
 base_model = "/home/binit/fine_tune_LLama/Llama-3.2-3B"
 tokenizer = AutoTokenizer.from_pretrained(base_model)
@@ -40,10 +41,12 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto",
     attn_implementation=attn_implementation
 )
-
+print(model)
+# model.lm_head.out_features = 128258
+# print(model)
 #Importing the dataset
 dataset = load_dataset(dataset_name, split="train")
-dataset = dataset.shuffle(seed=65).select(range(20000)) 
+dataset = dataset.shuffle(seed=65).select(range(100)) 
 instruction = """You are a top-rated customer service agent named Sahara Chutiya. 
     Be polite to customers and answer all their questions.
     """
@@ -63,63 +66,64 @@ dataset = dataset.map(
 train_size = int(0.8 * len(dataset))
 train_dataset = dataset.select(range(train_size))
 test_dataset = dataset.select(range(train_size, len(dataset)))
+print((test_dataset)[0])
 
-# print(dataset['text'][3])
-def find_all_linear_names(model):
-    cls = bnb.nn.Linear4bit
-    lora_module_names = set()
-    for name, module in model.named_modules():
-        if isinstance(module, cls):
-            names = name.split('.')
-            lora_module_names.add(names[0] if len(names) == 1 else names[-1])
-    if 'lm_head' in lora_module_names: 
-        lora_module_names.remove('lm_head')
-    return list(lora_module_names)
+# # print(dataset['text'][3])
+# def find_all_linear_names(model):
+#     cls = bnb.nn.Linear4bit
+#     lora_module_names = set()
+#     for name, module in model.named_modules():
+#         if isinstance(module, cls):
+#             names = name.split('.')
+#             lora_module_names.add(names[0] if len(names) == 1 else names[-1])
+#     if 'lm_head' in lora_module_names: 
+#         lora_module_names.remove('lm_head')
+#     return list(lora_module_names)
 
-modules = find_all_linear_names(model)
+# modules = find_all_linear_names(model)
 
-peft_config = LoraConfig(
-    r = 16, 
-    lora_alpha= 32,
-    lora_dropout= 0.5,
-    bias = "none",
-    task_type="CAUSAL_LM",
-    target_modules=modules
-)
-if hasattr(tokenizer, "chat_template") and tokenizer.chat_template is not None:
-    tokenizer.chat_template = None
-model, tokenizer = setup_chat_format(model, tokenizer)
-model = get_peft_model(model, peft_config)
+# peft_config = LoraConfig(
+#     r = 16, 
+#     lora_alpha= 32,
+#     lora_dropout= 0.5,
+#     bias = "none",
+#     task_type="CAUSAL_LM",
+#     target_modules=modules
+# )
+# if hasattr(tokenizer, "chat_template") and tokenizer.chat_template is not None:
+#     tokenizer.chat_template = None
+# model, tokenizer = setup_chat_format(model, tokenizer)
+# model = get_peft_model(model, peft_config)
 
-#Hyperparamter
-training_arguments = TrainingArguments(
-    output_dir=new_model,
-    per_device_train_batch_size=1,
-    per_device_eval_batch_size=1,
-    gradient_accumulation_steps=2,
-    optim="paged_adamw_32bit",
-    num_train_epochs=1,
-    eval_strategy="steps",
-    eval_steps=0.2,
-    logging_steps=1,
-    warmup_steps=10,
-    logging_strategy="steps",
-    learning_rate=2e-4,
-    fp16=False,
-    bf16=False,
-    group_by_length=True,
-    logging_dir="./logs",
-)
+# #Hyperparamter
+# training_arguments = TrainingArguments(
+#     output_dir=new_model,
+#     per_device_train_batch_size=1,
+#     per_device_eval_batch_size=1,
+#     gradient_accumulation_steps=2,
+#     optim="paged_adamw_32bit",
+#     num_train_epochs=1,
+#     eval_strategy="steps",
+#     eval_steps=0.2,
+#     logging_steps=1,
+#     warmup_steps=10,
+#     logging_strategy="steps",
+#     learning_rate=2e-4,
+#     fp16=False,
+#     bf16=False,
+#     group_by_length=True,
+#     logging_dir="./logs",
+# )
 
-# Setting sft parameters
-trainer = SFTTrainer(
-    model=model,
-    train_dataset=train_dataset,
-    eval_dataset=test_dataset,
-    peft_config=peft_config,
-    tokenizer=tokenizer,
-    args=training_arguments,
-)
-trainer.train()
+# # Setting sft parameters
+# trainer = SFTTrainer(
+#     model=model,
+#     train_dataset=train_dataset,
+#     eval_dataset=test_dataset,
+#     peft_config=peft_config,
+#     tokenizer=tokenizer,
+#     args=training_arguments,
+# )
+# trainer.train()
 
-trainer.model.save_pretrained(new_model)
+# trainer.model.save_pretrained(new_model)
